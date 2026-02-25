@@ -62,6 +62,35 @@ Read a file list from stdin (when no arguments given):
 {"filename":"article2",...}
 ```
 
+### `--jq` option
+
+Filter and transform JSON output using [jq](https://jqlang.github.io/jq/) expressions (powered by [gojq](https://github.com/itchyny/gojq)):
+
+```console
+% fmd2json --jq '.filename' a.md b.md
+"a"
+"b"
+
+% fmd2json --jq '{title: .filename, size: (.body | length)}' article.md
+{"title":"article","size":42}
+```
+
+By default, string values are output as JSON-encoded strings (with quotes and escapes), which keeps each result on a single line even if the value contains newlines. This is safe for multi-file processing:
+
+```console
+% fmd2json --jq '.body' a.md b.md
+"first line\nsecond line\n"
+"another body\n"
+```
+
+Use `--raw-output` (or `-r`) to output raw strings without JSON encoding, similar to `jq -r`:
+
+```console
+% fmd2json --jq '.filename' -r a.md b.md
+a
+b
+```
+
 ## Installation
 
 ```console

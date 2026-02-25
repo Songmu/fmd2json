@@ -28,18 +28,31 @@ func Run(ctx context.Context, argv []string, outStream, errStream io.Writer) err
 		fmt.Sprintf("%s (v%s rev:%s)", cmdName, version, revision), flag.ContinueOnError)
 	fs.SetOutput(errStream)
 	ver := fs.Bool("version", false, "display version")
+	jqExpr := fs.String("jq", "", "jq expression to apply to each JSON output")
+	rawOutput := fs.Bool("raw-output", false, "output raw strings instead of JSON encoded strings (with --jq)")
+	fs.BoolVar(rawOutput, "r", false, "shorthand for --raw-output")
 	if err := fs.Parse(argv); err != nil {
 		return err
 	}
 	if *ver {
 		return printVersion(outStream)
 	}
+	if *rawOutput && *jqExpr == "" {
+		return fmt.Errorf("--raw-output (-r) requires --jq to be specified")
+	}
+
+	outputFunc := func(w io.Writer, v any) error {
+		if *jqExpr != "" {
+			return applyJQ(v, *jqExpr, w, *rawOutput)
+		}
+		return writeJSON(w, v)
+	}
 
 	args := fs.Args()
 	switch {
 	case len(args) > 0:
 		for _, arg := range args {
-			if err := processArg(arg, outStream, errStream); err != nil {
+			if err := processArg(arg, outStream, errStream, outputFunc); err != nil {
 				return err
 			}
 		}
@@ -51,7 +64,7 @@ func Run(ctx context.Context, argv []string, outStream, errStream io.Writer) err
 			if line == "" {
 				continue
 			}
-			if err := processFile(line, outStream, errStream); err != nil {
+			if err := processFile(line, outStream, errStream, outputFunc); err != nil {
 				return err
 			}
 		}
@@ -62,14 +75,14 @@ func Run(ctx context.Context, argv []string, outStream, errStream io.Writer) err
 	return nil
 }
 
-func processArg(arg string, outStream, errStream io.Writer) error {
+func processArg(arg string, outStream, errStream io.Writer, outputFunc func(io.Writer, any) error) error {
 	if arg == "-" {
-		return processStdin(outStream, errStream)
+		return processStdin(outStream, errStream, outputFunc)
 	}
-	return processFile(arg, outStream, errStream)
+	return processFile(arg, outStream, errStream, outputFunc)
 }
 
-func processStdin(outStream, errStream io.Writer) error {
+func processStdin(outStream, errStream io.Writer, outputFunc func(io.Writer, any) error) error {
 	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return fmt.Errorf("reading stdin: %w", err)
@@ -78,10 +91,10 @@ func processStdin(outStream, errStream io.Writer) error {
 	warnConflicts(props, errStream)
 
 	result := buildResult(props, "", body, nil)
-	return writeJSON(outStream, result)
+	return outputFunc(outStream, result)
 }
 
-func processFile(path string, outStream, errStream io.Writer) error {
+func processFile(path string, outStream, errStream io.Writer, outputFunc func(io.Writer, any) error) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("reading file %s: %w", path, err)
@@ -97,7 +110,7 @@ func processFile(path string, outStream, errStream io.Writer) error {
 	mtime := fi.ModTime().Format(time.RFC3339)
 
 	result := buildResult(props, filename, body, &mtime)
-	return writeJSON(outStream, result)
+	return outputFunc(outStream, result)
 }
 
 // parseFrontmatter splits markdown content into frontmatter properties and body.
