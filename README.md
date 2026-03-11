@@ -54,6 +54,13 @@ Read from stdin with `-`:
 {"filename":"","body":"...","..."}
 ```
 
+Use `-filename` to specify the filename when reading from stdin:
+
+```console
+% cat article.md | fmd2json -filename article.md -
+{"filename":"article","body":"...","..."}
+```
+
 Read a file list from stdin (when no arguments given):
 
 ```console

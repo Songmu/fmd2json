@@ -28,6 +28,7 @@ func Run(ctx context.Context, argv []string, outStream, errStream io.Writer) err
 		fmt.Sprintf("%s (v%s rev:%s)", cmdName, version, revision), flag.ContinueOnError)
 	fs.SetOutput(errStream)
 	ver := fs.Bool("version", false, "display version")
+	filenameFlag := fs.String("filename", "", "specify filename for stdin input (used with -)")
 	jqExpr := fs.String("jq", "", "jq expression to apply to each JSON output")
 	rawOutput := fs.Bool("raw-output", false, "output raw strings instead of JSON encoded strings (with --jq)")
 	fs.BoolVar(rawOutput, "r", false, "shorthand for --raw-output")
@@ -51,12 +52,25 @@ func Run(ctx context.Context, argv []string, outStream, errStream io.Writer) err
 	args := fs.Args()
 	switch {
 	case len(args) > 0:
+		hasStdin := false
 		for _, arg := range args {
-			if err := processArg(arg, outStream, errStream, outputFunc); err != nil {
+			if arg == "-" {
+				hasStdin = true
+				break
+			}
+		}
+		if *filenameFlag != "" && !hasStdin {
+			log.Println("warning: -filename is only used with stdin input (-), ignoring")
+		}
+		for _, arg := range args {
+			if err := processArg(arg, *filenameFlag, outStream, errStream, outputFunc); err != nil {
 				return err
 			}
 		}
 	default:
+		if *filenameFlag != "" {
+			log.Println("warning: -filename is only used with stdin input (-), ignoring")
+		}
 		// Read file list from stdin
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
@@ -75,14 +89,14 @@ func Run(ctx context.Context, argv []string, outStream, errStream io.Writer) err
 	return nil
 }
 
-func processArg(arg string, outStream, errStream io.Writer, outputFunc func(io.Writer, any) error) error {
+func processArg(arg, nameOverride string, outStream, errStream io.Writer, outputFunc func(io.Writer, any) error) error {
 	if arg == "-" {
-		return processStdin(outStream, errStream, outputFunc)
+		return processStdin(nameOverride, outStream, errStream, outputFunc)
 	}
 	return processFile(arg, outStream, errStream, outputFunc)
 }
 
-func processStdin(outStream, errStream io.Writer, outputFunc func(io.Writer, any) error) error {
+func processStdin(nameOverride string, outStream, errStream io.Writer, outputFunc func(io.Writer, any) error) error {
 	data, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		return fmt.Errorf("reading stdin: %w", err)
@@ -90,7 +104,11 @@ func processStdin(outStream, errStream io.Writer, outputFunc func(io.Writer, any
 	props, body := parseFrontmatter(data)
 	warnConflicts(props, errStream)
 
-	result := buildResult(props, "", body, nil)
+	var filename string
+	if nameOverride != "" {
+		filename = strings.TrimSuffix(filepath.Base(nameOverride), ".md")
+	}
+	result := buildResult(props, filename, body, nil)
 	return outputFunc(outStream, result)
 }
 

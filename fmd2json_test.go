@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 )
@@ -204,6 +205,93 @@ func TestRunMultipleFiles(t *testing.T) {
 	}
 	if second["title"] != "second" {
 		t.Errorf("second title = %v", second["title"])
+	}
+}
+
+func setStdin(t *testing.T, content string) {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.WriteString(content)
+	w.Close()
+	origStdin := os.Stdin
+	os.Stdin = r
+	t.Cleanup(func() { os.Stdin = origStdin })
+}
+
+func TestRunStdinWithFilename(t *testing.T) {
+	tests := []struct {
+		name         string
+		argv         []string
+		stdin        string
+		wantFilename string
+	}{
+		{
+			name:         "filename with .md extension",
+			argv:         []string{"-filename", "input.md", "-"},
+			stdin:        "---\ntitle: test\n---\nbody\n",
+			wantFilename: "input",
+		},
+		{
+			name:         "filename without .md extension",
+			argv:         []string{"-filename", "myfile", "-"},
+			stdin:        "---\ntitle: test\n---\nbody\n",
+			wantFilename: "myfile",
+		},
+		{
+			name:         "filename with path",
+			argv:         []string{"-filename", "path/to/input.md", "-"},
+			stdin:        "---\ntitle: test\n---\nbody\n",
+			wantFilename: "input",
+		},
+		{
+			name:         "stdin without filename flag",
+			argv:         []string{"-"},
+			stdin:        "---\ntitle: test\n---\nbody\n",
+			wantFilename: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setStdin(t, tt.stdin)
+			var outBuf, errBuf bytes.Buffer
+			err := Run(context.Background(), tt.argv, &outBuf, &errBuf)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var result map[string]any
+			if err := json.Unmarshal(outBuf.Bytes(), &result); err != nil {
+				t.Fatalf("invalid JSON output: %v\noutput: %s", err, outBuf.String())
+			}
+			if result["filename"] != tt.wantFilename {
+				t.Errorf("filename = %v, want %q", result["filename"], tt.wantFilename)
+			}
+		})
+	}
+}
+
+func TestRunFilenameIgnoredForFiles(t *testing.T) {
+	var outBuf, errBuf bytes.Buffer
+	err := Run(context.Background(), []string{"-filename", "foo", "testdata/basic.md"}, &outBuf, &errBuf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should warn about -filename being ignored
+	if !strings.Contains(errBuf.String(), "warning") || !strings.Contains(errBuf.String(), "-filename") {
+		t.Errorf("expected warning about -filename being ignored, got stderr: %q", errBuf.String())
+	}
+
+	// filename should come from the file path, not the flag
+	var result map[string]any
+	if err := json.Unmarshal(outBuf.Bytes(), &result); err != nil {
+		t.Fatalf("invalid JSON output: %v", err)
+	}
+	if result["filename"] != "basic" {
+		t.Errorf("filename = %v, want %q", result["filename"], "basic")
 	}
 }
 
