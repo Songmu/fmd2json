@@ -305,3 +305,21 @@ func TestRunVersion(t *testing.T) {
 		t.Errorf("version output = %q", outBuf.String())
 	}
 }
+
+func TestRunSkillsDispatch(t *testing.T) {
+	// Verify that "skills" as the first argument dispatches to skillsmith
+	// before flag parsing, and that stdout/stderr are wired correctly.
+	var outBuf, errBuf bytes.Buffer
+	err := Run(context.Background(), []string{"skills", "list"}, &outBuf, &errBuf)
+	if err != nil {
+		t.Fatalf("skills list returned error: %v", err)
+	}
+	// The embedded skill "fmd2json" should appear in the list output.
+	if !strings.Contains(outBuf.String(), "fmd2json") {
+		t.Errorf("skills list output did not contain 'fmd2json': %q", outBuf.String())
+	}
+	// No errors should be written to stderr on a successful list.
+	if errBuf.Len() != 0 {
+		t.Errorf("unexpected stderr output: %q", errBuf.String())
+	}
+}
