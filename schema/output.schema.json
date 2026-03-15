@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Songmu/fmd2json/schema/output.schema.json",
+  "title": "fmd2json output",
+  "description": "JSON output schema for fmd2json",
+  "type": "object",
+  "properties": {
+    "filename": {
+      "type": "string",
+      "description": "file name with .md extension removed"
+    },
+    "body": {
+      "type": "string",
+      "description": "content after frontmatter delimiter"
+    },
+    "mtime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "file modification time in RFC 3339"
+    }
+  },
+  "required": ["filename", "body"],
+  "additionalProperties": true
+}

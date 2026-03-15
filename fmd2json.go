@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Songmu/skillsmith"
 	"github.com/goccy/go-yaml"
 )
 
@@ -24,9 +25,22 @@ var defaultPropertyNames = []string{"filename", "body", "mtime"}
 // Run the fmd2json
 func Run(ctx context.Context, argv []string, outStream, errStream io.Writer) error {
 	log.SetOutput(errStream)
+	if len(argv) > 0 && argv[0] == "skills" {
+		s, err := skillsmith.New("fmd2json", version, skillsFS)
+		if err != nil {
+			return err
+		}
+		s.OutWriter = outStream
+		s.ErrWriter = errStream
+		return s.Run(ctx, argv[1:])
+	}
 	fs := flag.NewFlagSet(
 		fmt.Sprintf("%s (v%s rev:%s)", cmdName, version, revision), flag.ContinueOnError)
 	fs.SetOutput(errStream)
+	fs.Usage = func() {
+		fmt.Fprintf(errStream, "Usage: %s [options] [file...]\n\nSubcommands:\n  skills  Manage agent skills\n\nOptions:\n", cmdName)
+		fs.PrintDefaults()
+	}
 	ver := fs.Bool("version", false, "display version")
 	filenameFlag := fs.String("filename", "", "specify filename for stdin input (used with -)")
 	jqExpr := fs.String("jq", "", "jq expression to apply to each JSON output")
