@@ -35,6 +35,7 @@ This is the body.
 
 `fmd2json` reads Markdown files with YAML frontmatter and outputs JSON. Frontmatter properties are included as-is, along with default properties:
 
+- `dir` — directory path of the input file (omitted when empty or current directory, always uses `/` as separator)
 - `filename` — file name without `.md` extension
 - `body` — content after frontmatter (or entire content if no frontmatter)
 - `mtime` — file modification time in RFC 3339 format
@@ -42,9 +43,9 @@ This is the body.
 Multiple files produce newline-delimited JSON (ndjson):
 
 ```console
-% fmd2json a.md b.md
-{"filename":"a",...}
-{"filename":"b",...}
+% fmd2json docs/a.md docs/b.md
+{"dir":"docs","filename":"a",...}
+{"dir":"docs","filename":"b",...}
 ```
 
 Read from stdin with `-`:
@@ -65,8 +66,8 @@ Read a file list from stdin (when no arguments given):
 
 ```console
 % find . -name '*.md' | fmd2json
-{"filename":"article1",...}
-{"filename":"article2",...}
+{"dir":"./docs","filename":"article1",...}
+{"dir":"./docs","filename":"article2",...}
 ```
 
 ### `--jq` option

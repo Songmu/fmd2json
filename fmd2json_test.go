@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -112,6 +113,9 @@ func TestRunWithFiles(t *testing.T) {
 		t.Fatalf("invalid JSON output: %v\noutput: %s", err, outBuf.String())
 	}
 
+	if result["dir"] != "testdata" {
+		t.Errorf("dir = %v, want %q", result["dir"], "testdata")
+	}
 	if result["filename"] != "basic" {
 		t.Errorf("filename = %v, want %q", result["filename"], "basic")
 	}
@@ -138,6 +142,9 @@ func TestRunNoFrontmatter(t *testing.T) {
 		t.Fatalf("invalid JSON output: %v", err)
 	}
 
+	if result["dir"] != "testdata" {
+		t.Errorf("dir = %v, want %q", result["dir"], "testdata")
+	}
 	if result["filename"] != "no_frontmatter" {
 		t.Errorf("filename = %v, want %q", result["filename"], "no_frontmatter")
 	}
@@ -170,6 +177,9 @@ func TestRunConflictWarning(t *testing.T) {
 	if err := json.Unmarshal(outBuf.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
+	if result["dir"] != "testdata" {
+		t.Errorf("dir = %v, want %q", result["dir"], "testdata")
+	}
 	if result["filename"] != "conflict" {
 		t.Errorf("filename = %v, want %q", result["filename"], "conflict")
 	}
@@ -197,8 +207,14 @@ func TestRunMultipleFiles(t *testing.T) {
 	json.Unmarshal([]byte(lines[0]), &first)
 	json.Unmarshal([]byte(lines[1]), &second)
 
+	if first["dir"] != "testdata" {
+		t.Errorf("first dir = %v", first["dir"])
+	}
 	if first["filename"] != "basic" {
 		t.Errorf("first filename = %v", first["filename"])
+	}
+	if second["dir"] != "testdata" {
+		t.Errorf("second dir = %v", second["dir"])
 	}
 	if second["filename"] != "second" {
 		t.Errorf("second filename = %v", second["filename"])
@@ -226,30 +242,35 @@ func TestRunStdinWithFilename(t *testing.T) {
 		name         string
 		argv         []string
 		stdin        string
+		wantDir      string
 		wantFilename string
 	}{
 		{
 			name:         "filename with .md extension",
 			argv:         []string{"-filename", "input.md", "-"},
 			stdin:        "---\ntitle: test\n---\nbody\n",
+			wantDir:      "",
 			wantFilename: "input",
 		},
 		{
 			name:         "filename without .md extension",
 			argv:         []string{"-filename", "myfile", "-"},
 			stdin:        "---\ntitle: test\n---\nbody\n",
+			wantDir:      "",
 			wantFilename: "myfile",
 		},
 		{
 			name:         "filename with path",
 			argv:         []string{"-filename", "path/to/input.md", "-"},
 			stdin:        "---\ntitle: test\n---\nbody\n",
+			wantDir:      "path/to",
 			wantFilename: "input",
 		},
 		{
 			name:         "stdin without filename flag",
 			argv:         []string{"-"},
 			stdin:        "---\ntitle: test\n---\nbody\n",
+			wantDir:      "",
 			wantFilename: "",
 		},
 	}
@@ -265,6 +286,15 @@ func TestRunStdinWithFilename(t *testing.T) {
 			var result map[string]any
 			if err := json.Unmarshal(outBuf.Bytes(), &result); err != nil {
 				t.Fatalf("invalid JSON output: %v\noutput: %s", err, outBuf.String())
+			}
+			gotDir, _ := result["dir"].(string)
+			if gotDir != tt.wantDir {
+				t.Errorf("dir = %q, want %q", gotDir, tt.wantDir)
+			}
+			if tt.wantDir == "" {
+				if _, exists := result["dir"]; exists {
+					t.Errorf("dir field should be omitted, but got %v", result["dir"])
+				}
 			}
 			if result["filename"] != tt.wantFilename {
 				t.Errorf("filename = %v, want %q", result["filename"], tt.wantFilename)
@@ -290,8 +320,92 @@ func TestRunFilenameIgnoredForFiles(t *testing.T) {
 	if err := json.Unmarshal(outBuf.Bytes(), &result); err != nil {
 		t.Fatalf("invalid JSON output: %v", err)
 	}
+	if result["dir"] != "testdata" {
+		t.Errorf("dir = %v, want %q", result["dir"], "testdata")
+	}
 	if result["filename"] != "basic" {
 		t.Errorf("filename = %v, want %q", result["filename"], "basic")
+	}
+}
+
+func TestExtractDir(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantDir string
+	}{
+		{"no directory", "article.md", ""},
+		{"current directory", "./article.md", ""},
+		{"single directory", "docs/article.md", "docs"},
+		{"nested directory", "path/to/article.md", "path/to"},
+		{"absolute path", "/absolute/path/article.md", "/absolute/path"},
+		{"dot-dot path", "../parent/article.md", "../parent"},
+		{"redundant slashes", "path//to///article.md", "path/to"},
+		{"trailing dot", "path/to/./article.md", "path/to"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cleaned := filepath.Clean(tt.input)
+			got := extractDir(cleaned)
+			if got != tt.wantDir {
+				t.Errorf("extractDir(%q) = %q, want %q", tt.input, got, tt.wantDir)
+			}
+		})
+	}
+}
+
+func TestDirOmittedForCurrentDirectory(t *testing.T) {
+	// When processing a file with no directory component, dir should be omitted
+	setStdin(t, "---\ntitle: test\n---\nbody\n")
+	var outBuf, errBuf bytes.Buffer
+	err := Run(context.Background(), []string{"-filename", "article.md", "-"}, &outBuf, &errBuf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result map[string]any
+	if err := json.Unmarshal(outBuf.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := result["dir"]; exists {
+		t.Errorf("dir field should be omitted for current directory, got %v", result["dir"])
+	}
+}
+
+func TestDirConflictWarning(t *testing.T) {
+	// When frontmatter contains "dir", it should be warned and overridden
+	setStdin(t, "---\ndir: custom\ntitle: test\n---\nbody\n")
+	var outBuf, errBuf bytes.Buffer
+	err := Run(context.Background(), []string{"-filename", "docs/article.md", "-"}, &outBuf, &errBuf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(errBuf.String(), `"dir"`) {
+		t.Error("expected warning for dir conflict")
+	}
+	var result map[string]any
+	if err := json.Unmarshal(outBuf.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if result["dir"] != "docs" {
+		t.Errorf("dir = %v, want %q", result["dir"], "docs")
+	}
+}
+
+func TestDirConflictFrontmatterRemovedWhenNoDir(t *testing.T) {
+	// When frontmatter contains "dir" but input has no directory, "dir" should be removed
+	setStdin(t, "---\ndir: custom\ntitle: test\n---\nbody\n")
+	var outBuf, errBuf bytes.Buffer
+	err := Run(context.Background(), []string{"-filename", "article.md", "-"}, &outBuf, &errBuf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result map[string]any
+	if err := json.Unmarshal(outBuf.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := result["dir"]; exists {
+		t.Errorf("dir field should be removed even if frontmatter has dir, got %v", result["dir"])
 	}
 }
 
