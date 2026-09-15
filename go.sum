@@ -1,5 +1,5 @@
-github.com/Songmu/skillsmith v0.0.2 h1:sF3wAc74Xi4BJ3D60njDoW33wzrZbdTMteKHpSIvkIk=
-github.com/Songmu/skillsmith v0.0.2/go.mod h1:agwErnb8lLH48nyoDqEZfoVJovtMGOgqUuTnR1M9ORI=
+github.com/Songmu/skillsmith v0.1.0 h1:R7tT94OrdsLuDGpdiBbLEjS+nDIRKjxGHeejwDpdf6w=
+github.com/Songmu/skillsmith v0.1.0/go.mod h1:agwErnb8lLH48nyoDqEZfoVJovtMGOgqUuTnR1M9ORI=
 github.com/goccy/go-yaml v1.19.2 h1:PmFC1S6h8ljIz6gMRBopkjP1TVT7xuwrButHID66PoM=
 github.com/goccy/go-yaml v1.19.2/go.mod h1:XBurs7gK8ATbW4ZPGKgcbrY1Br56PdM69F7LkFRi1kA=
 github.com/itchyny/gojq v0.12.18 h1:gFGHyt/MLbG9n6dqnvlliiya2TaMMh6FFaR2b1H6Drc=
