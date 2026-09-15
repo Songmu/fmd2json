@@ -5,6 +5,10 @@
   "description": "JSON output schema for fmd2json",
   "type": "object",
   "properties": {
+    "dir": {
+      "type": "string",
+      "description": "directory path of the input file (omitted when empty or current directory)"
+    },
     "filename": {
       "type": "string",
       "description": "file name with .md extension removed"

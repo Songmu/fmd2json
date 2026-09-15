@@ -20,7 +20,7 @@ import (
 
 const cmdName = "fmd2json"
 
-var defaultPropertyNames = []string{"filename", "body", "mtime"}
+var defaultPropertyNames = []string{"dir", "filename", "body", "mtime"}
 
 // Run the fmd2json
 func Run(ctx context.Context, argv []string, outStream, errStream io.Writer) error {
@@ -118,11 +118,13 @@ func processStdin(nameOverride string, outStream, errStream io.Writer, outputFun
 	props, body := parseFrontmatter(data)
 	warnConflicts(props, errStream)
 
-	var filename string
+	var dir, filename string
 	if nameOverride != "" {
-		filename = strings.TrimSuffix(filepath.Base(nameOverride), ".md")
+		cleaned := filepath.Clean(nameOverride)
+		filename = strings.TrimSuffix(filepath.Base(cleaned), ".md")
+		dir = extractDir(cleaned)
 	}
-	result := buildResult(props, filename, body, nil)
+	result := buildResult(props, dir, filename, body, nil)
 	return outputFunc(outStream, result)
 }
 
@@ -138,10 +140,12 @@ func processFile(path string, outStream, errStream io.Writer, outputFunc func(io
 	props, body := parseFrontmatter(data)
 	warnConflicts(props, errStream)
 
-	filename := strings.TrimSuffix(filepath.Base(path), ".md")
+	cleaned := filepath.Clean(path)
+	filename := strings.TrimSuffix(filepath.Base(cleaned), ".md")
+	dir := extractDir(cleaned)
 	mtime := fi.ModTime().Format(time.RFC3339)
 
-	result := buildResult(props, filename, body, &mtime)
+	result := buildResult(props, dir, filename, body, &mtime)
 	return outputFunc(outStream, result)
 }
 
@@ -210,19 +214,33 @@ func warnConflicts(props map[string]any, errStream io.Writer) {
 	}
 }
 
-func buildResult(props map[string]any, filename, body string, mtime *string) map[string]any {
+func buildResult(props map[string]any, dir, filename, body string, mtime *string) map[string]any {
 	result := make(map[string]any)
 	// Copy frontmatter properties first
 	for k, v := range props {
 		result[k] = v
 	}
 	// Override with default properties
+	delete(result, "dir")
+	if dir != "" {
+		result["dir"] = dir
+	}
 	result["filename"] = filename
 	result["body"] = body
 	if mtime != nil {
 		result["mtime"] = *mtime
 	}
 	return result
+}
+
+// extractDir returns the directory part of a cleaned path using forward slashes.
+// Returns empty string if the directory is "." (current directory).
+func extractDir(cleaned string) string {
+	dir := filepath.Dir(cleaned)
+	if dir == "." {
+		return ""
+	}
+	return filepath.ToSlash(dir)
 }
 
 func writeJSON(w io.Writer, v any) error {
