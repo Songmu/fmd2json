@@ -1,0 +1,41 @@
+{
+  "skill_name": "fmd2json",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a Markdown file at testdata/basic.md. Convert that exact relative path to JSON with fmd2json without changing directories or shortening the path, verify the output is valid, and briefly explain which fields came from frontmatter versus fmd2json.",
+      "expected_output": "A valid JSON record with dir=testdata from the exact testdata/basic.md path and an accurate distinction between frontmatter and generated fields.",
+      "files": [],
+      "expectations": [
+        "The response runs fmd2json against the exact relative path testdata/basic.md rather than changing directories, shortening the path, or implementing a separate parser.",
+        "The produced JSON contains prop1=aaa, dir=testdata, filename=basic, body matching the Markdown content, and an RFC 3339 mtime.",
+        "The response correctly identifies prop1 as frontmatter and dir, filename, body, and mtime as generated fields.",
+        "The response verifies that the output is valid JSON."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Using the Markdown files under testdata, print the title or filename of every non-draft document as plain text, one per line. Use fmd2json's built-in filtering instead of a separate jq process, and make the command robust when title is missing.",
+      "expected_output": "A built-in --jq/-r invocation that filters drafts and falls back from title to filename.",
+      "files": [],
+      "expectations": [
+        "The command uses fmd2json --jq and raw output rather than piping into an external jq command.",
+        "The jq expression excludes records where draft is true.",
+        "The jq expression falls back to filename when title is absent.",
+        "The output is plain text with one selected value per line."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Convert this stdin Markdown document with fmd2json while treating its logical path as notes/weekly.md: printf '%s\\n' '---' 'dir: wrong' 'filename: wrong' 'topic: planning' '---' 'Agenda' | ... . Tell me whether mtime appears and what happens to the conflicting dir and filename frontmatter keys.",
+      "expected_output": "A correct -filename ... - invocation plus accurate explanation of derived dir, stdin mtime omission, and generated-field precedence.",
+      "files": [],
+      "expectations": [
+        "The command uses -filename notes/weekly.md together with the '-' stdin document argument.",
+        "The result uses dir notes and filename weekly.",
+        "The result omits mtime because the document is read from stdin.",
+        "The response explains that generated dir and filename override both conflicting frontmatter values and that warnings for both keys are written to stderr."
+      ]
+    }
+  ]
+}
