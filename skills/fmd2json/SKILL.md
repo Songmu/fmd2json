@@ -11,9 +11,9 @@ Use `fmd2json` to turn Markdown documents into structured records without writin
 ## Workflow
 
 1. Identify whether the input is file arguments, one Markdown document on stdin, or a newline-separated file list on stdin.
-2. Confirm the command is available with `command -v fmd2json`. If it is missing and the user asked to perform the conversion, report that clearly and provide the repository's installation command rather than silently substituting a different parser.
+2. Confirm the command is available with `command -v fmd2json`. If it is missing, report that clearly rather than silently substituting a different parser.
 3. Choose the simplest invocation that produces the requested shape.
-4. Run the command with quoted paths. Use `find ... -print0` with `xargs -0` when filenames may contain spaces or special characters; the no-argument file-list mode accepts newline-separated paths and cannot represent filenames containing newlines.
+4. Run the command with quoted paths. Preserve the path as supplied when the caller needs `dir`; do not `cd` into its parent or replace `docs/article.md` with `article.md`, because `dir` is derived from the argument text. Use `find ... -print0` with `xargs -0` when filenames may contain spaces or special characters; the no-argument file-list mode accepts newline-separated paths and cannot represent filenames containing newlines.
 5. Inspect a small sample or validate the resulting JSON before reporting success. For NDJSON, validate each line independently or use a tool that understands streaming JSON.
 
 ## Input modes
@@ -39,6 +39,8 @@ Each input record produces JSON containing:
 
 Multiple inputs produce newline-delimited JSON (NDJSON), not one JSON array. Preserve NDJSON for streaming workflows; wrap it only when the consumer explicitly requires an array.
 
+For example, `fmd2json docs/article.md` emits `"dir":"docs"` and `"filename":"article"`. `fmd2json article.md` omits `dir` because the argument has no directory component. The same rule applies to the logical path passed with `-filename`.
+
 Frontmatter is recognized only when the document begins with a `---` delimiter and has a closing `---` delimiter. Without valid opening and closing delimiters, the entire document is body text. If the delimiters are present but the YAML cannot be decoded, no frontmatter fields are added and only the content after the closing delimiter becomes `body`.
 
 The generated fields `dir`, `filename`, `body`, and `mtime` take precedence over frontmatter keys with the same names. `fmd2json` writes a warning to stderr when a conflict occurs.
@@ -48,6 +50,9 @@ The generated fields `dir`, `filename`, `body`, and `mtime` take precedence over
 ```bash
 # Convert one file
 fmd2json article.md
+
+# Preserve the relative directory in the generated dir field
+fmd2json docs/article.md
 
 # Convert a safely expanded collection, including paths with spaces
 find docs -type f -name '*.md' -print0 | xargs -0 fmd2json
