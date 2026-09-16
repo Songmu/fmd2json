@@ -1,115 +1,91 @@
 ---
 name: fmd2json
-description: Convert Markdown files with YAML frontmatter to JSON using fmd2json
+description: Convert Markdown with YAML frontmatter into JSON or NDJSON using the fmd2json CLI, then filter or reshape records with its built-in jq support. Use this skill whenever a user needs to extract frontmatter, index Markdown collections, turn posts or notes into machine-readable data, select records by metadata, or pipe Markdown metadata into another command—even when they ask for JSON, metadata extraction, or content inventory without naming fmd2json.
 license: MIT
-compatibility:
-  - claude
-  - codex
-  - agents
-allowed_tools:
-  - Bash
-  - Read
 ---
 
 # fmd2json
 
-`fmd2json` reads Markdown files with YAML frontmatter and outputs newline-delimited JSON (ndjson). Each output object contains all frontmatter properties plus default properties.
+Use `fmd2json` to turn Markdown documents into structured records without writing a custom parser. It preserves YAML frontmatter values and adds path and content fields that are useful for indexing, filtering, and pipelines.
 
-## Output JSON Schema
+## Workflow
 
-Each line of output is a JSON object conforming to the following schema:
+1. Identify whether the input is file arguments, one Markdown document on stdin, or a newline-separated file list on stdin.
+2. Confirm the command is available with `command -v fmd2json`. If it is missing and the user asked to perform the conversion, report that clearly and provide the repository's installation command rather than silently substituting a different parser.
+3. Choose the simplest invocation that produces the requested shape.
+4. Run the command with quoted paths. Use `find ... -print0` with `xargs -0` when filenames may contain spaces or special characters; the no-argument file-list mode accepts newline-separated paths and cannot represent filenames containing newlines.
+5. Inspect a small sample or validate the resulting JSON before reporting success. For NDJSON, validate each line independently or use a tool that understands streaming JSON.
 
-```json
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "fmd2json output",
-  "description": "JSON output schema for fmd2json",
-  "type": "object",
-  "properties": {
-    "filename": {
-      "type": "string",
-      "description": "file name with .md extension removed"
-    },
-    "body": {
-      "type": "string",
-      "description": "content after frontmatter delimiter"
-    },
-    "mtime": {
-      "type": "string",
-      "format": "date-time",
-      "description": "file modification time in RFC 3339"
-    }
-  },
-  "required": ["filename", "body"],
-  "additionalProperties": true
-}
-```
+## Input modes
 
-`additionalProperties: true` means any YAML frontmatter key-value pairs are included as additional properties in the output object.
+| User's input | Invocation | Important behavior |
+|---|---|---|
+| One or more files | `fmd2json file.md docs/other.md` | Emits one JSON object per input file |
+| One document on stdin | `fmd2json -` | `filename` is empty and `mtime` is omitted |
+| Stdin document with a logical path | `fmd2json -filename docs/article.md -` | Derives `dir` and `filename` from the supplied path; `mtime` is omitted |
+| A newline-separated list of paths | `find docs -name '*.md' -print \| fmd2json` | With no file arguments, stdin is interpreted as paths, not Markdown content |
 
-## Basic Usage
+Do not confuse the two stdin modes: `-` means “read one Markdown document,” while no arguments means “read file paths.”
+
+## Output contract
+
+Each input record produces JSON containing:
+
+- `dir`: the input directory using `/` separators; omitted for the current directory or an unnamed stdin document
+- `filename`: basename with a trailing `.md` removed
+- `body`: content after the closing frontmatter delimiter, or the entire file when valid frontmatter is absent
+- `mtime`: filesystem modification time in RFC 3339; omitted for stdin documents
+- all non-conflicting YAML frontmatter properties
+
+Multiple inputs produce newline-delimited JSON (NDJSON), not one JSON array. Preserve NDJSON for streaming workflows; wrap it only when the consumer explicitly requires an array.
+
+Frontmatter is recognized only when the document begins with a `---` delimiter and has a closing `---` delimiter. Without valid opening and closing delimiters, the entire document is body text. If the delimiters are present but the YAML cannot be decoded, no frontmatter fields are added and only the content after the closing delimiter becomes `body`.
+
+The generated fields `dir`, `filename`, `body`, and `mtime` take precedence over frontmatter keys with the same names. `fmd2json` writes a warning to stderr when a conflict occurs.
+
+## Common commands
 
 ```bash
-# Convert a single file
+# Convert one file
 fmd2json article.md
 
-# Convert multiple files (outputs one JSON object per line)
-fmd2json a.md b.md
+# Convert a safely expanded collection, including paths with spaces
+find docs -type f -name '*.md' -print0 | xargs -0 fmd2json
 
-# Read from stdin using '-'
-cat article.md | fmd2json -
+# Read one Markdown document from stdin and preserve its logical path
+cat article.md | fmd2json -filename docs/article.md -
 
-# Specify filename when reading from stdin
-cat article.md | fmd2json -filename article.md -
+# Select published records while keeping NDJSON objects
+fmd2json --jq 'select(.draft != true)' docs/*.md
 
-# Read a list of file paths from stdin (when no arguments given)
-find . -name '*.md' | fmd2json
+# Emit one raw title per line, falling back to the filename
+fmd2json --jq '.title // .filename' --raw-output docs/*.md
+
+# Reshape each record
+fmd2json --jq '{slug: .filename, title: (.title // .filename), body: .body}' article.md
 ```
 
-## `--jq` / `-r` Options
+Use `-r` as shorthand for `--raw-output`. Raw output requires `--jq`; otherwise the command fails. Without raw output, string results remain JSON-encoded so each result stays safely on one line.
 
-Use `--jq` to filter or transform each JSON output with a jq expression (powered by gojq):
+## Filtering guidance
+
+Use the built-in `--jq` option for per-record selection and transformation:
 
 ```bash
-# Extract a single field
-fmd2json --jq '.filename' a.md b.md
+# Records tagged "go"
+fmd2json --jq 'select((.tags // []) | contains(["go"]))' docs/*.md
 
-# Transform the output object
-fmd2json --jq '{title: .filename, size: (.body | length)}' article.md
+# Filenames for non-draft posts
+fmd2json --jq 'select(.draft != true) | .filename' -r docs/*.md
+
+# Compact metadata inventory without the body
+fmd2json --jq 'del(.body)' docs/*.md
 ```
 
-By default, string values from `--jq` are JSON-encoded (quoted). Use `--raw-output` (or `-r`) to output raw strings without JSON encoding:
+Default missing optional fields before applying array or string functions. For example, prefer `(.tags // [])` to `.tags` when some documents may not define tags.
 
-```bash
-# Output raw string values (no quotes)
-fmd2json --jq '.filename' -r a.md b.md
+## Error handling
 
-# Equivalent shorthand
-fmd2json --jq '.title' --raw-output a.md
-```
+Treat a nonzero exit as failure and surface the stderr message. Common causes include unreadable paths, invalid jq expressions, jq runtime errors, and using `-r` without `--jq`.
 
-Note: `-r` / `--raw-output` requires `--jq` to be specified.
-
-## Filtering with `select()`
-
-Use jq's `select()` to filter records:
-
-```bash
-# Only output records where the 'draft' frontmatter field is true
-fmd2json --jq 'select(.draft == true)' *.md
-
-# Only output records with a specific tag
-fmd2json --jq 'select(.tags | arrays | contains(["go"]))' *.md
-
-# Output filenames of published posts
-fmd2json --jq 'select(.draft != true) | .filename' -r *.md
-```
-
-## Input Modes Summary
-
-| Invocation | Input source |
-|---|---|
-| `fmd2json file.md ...` | File arguments |
-| `fmd2json -` | stdin (single document) |
-| `fmd2json -filename name.md -` | stdin with explicit filename |
-| `fmd2json` (no args) | File paths read from stdin, one per line |
+Warnings on stderr do not necessarily mean conversion failed. In particular, frontmatter key conflicts are warnings; the output remains valid and uses the generated values.
