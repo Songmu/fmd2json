@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.0.5](https://github.com/Songmu/fmd2json/compare/v0.0.4...v0.0.5) - 2026-09-17
+
+- Document fmd2json skill installation by @Songmu in https://github.com/Songmu/fmd2json/pull/30
+- build(deps): bump Songmu/tagpr from 1.20.0 to 1.20.3 by @dependabot[bot] in https://github.com/Songmu/fmd2json/pull/25
+- build(deps): bump reviewdog/action-staticcheck from 1.28.0 to 1.32.0 by @dependabot[bot] in https://github.com/Songmu/fmd2json/pull/29
+- build(deps): bump reviewdog/action-actionlint from 1.72.0 to 1.74.0 by @dependabot[bot] in https://github.com/Songmu/fmd2json/pull/28
+- build(deps): bump actions/setup-go from 6.4.0 to 7.0.0 by @dependabot[bot] in https://github.com/Songmu/fmd2json/pull/27
+- build(deps): bump actions/checkout from 6.0.3 to 7.0.1 by @dependabot[bot] in https://github.com/Songmu/fmd2json/pull/26
+- ci: update misspell reviewdog action by @Songmu with @Copilot in https://github.com/Songmu/fmd2json/pull/32
+
 ## [v0.0.4](https://github.com/Songmu/fmd2json/compare/v0.0.3...v0.0.4) - 2026-09-16
 
 - build(deps): bump Songmu/tagpr from 1.17.1 to 1.20.0 by @dependabot[bot] in https://github.com/Songmu/fmd2json/pull/21
