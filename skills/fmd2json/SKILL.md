@@ -8,10 +8,27 @@ license: MIT
 
 Use `fmd2json` to turn Markdown documents into structured records without writing a custom parser. It preserves YAML frontmatter values and adds path and content fields that are useful for indexing, filtering, and pipelines.
 
+## Availability and Installation
+
+Before invoking `fmd2json`, check whether it is available with
+`command -v fmd2json`.
+
+If the command is unavailable, install it with Homebrew on macOS or Linux:
+
+```console
+brew install Songmu/tap/fmd2json
+```
+
+If Homebrew is unavailable but Go is installed, use:
+
+```console
+go install github.com/Songmu/fmd2json/cmd/fmd2json@latest
+```
+
 ## Workflow
 
 1. Identify whether the input is file arguments, one Markdown document on stdin, or a newline-separated file list on stdin.
-2. Confirm the command is available with `command -v fmd2json`. If it is missing, report that clearly rather than silently substituting a different parser.
+2. Confirm the command is available, installing it as described above when needed. Do not silently substitute a different parser.
 3. Choose the simplest invocation that produces the requested shape.
 4. Run the command with quoted paths. Preserve the path as supplied when the caller needs `dir`; do not `cd` into its parent or replace `docs/article.md` with `article.md`, because `dir` is derived from the argument text. Use `find ... -print0` with `xargs -0` when filenames may contain spaces or special characters; the no-argument file-list mode accepts newline-separated paths and cannot represent filenames containing newlines.
 5. Inspect a small sample or validate the resulting JSON before reporting success. For NDJSON, validate each line independently or use a tool that understands streaming JSON.
