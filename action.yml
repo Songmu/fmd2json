@@ -8,7 +8,7 @@ runs:
     - name: Install fmd2json
       shell: bash
       run: |
-        version="v0.0.5"
+        version="v0.0.6"
         bindir="${RUNNER_TEMP%/}/fmd2json/bin"
 
         sh "${GITHUB_ACTION_PATH}/install.sh" \
