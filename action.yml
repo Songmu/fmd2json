@@ -1,0 +1,20 @@
+name: Set up fmd2json
+description: Install fmd2json and add it to PATH
+author: Songmu
+
+runs:
+  using: composite
+  steps:
+    - name: Install fmd2json
+      shell: bash
+      run: |
+        version="v0.0.5"
+        bindir="${RUNNER_TEMP%/}/fmd2json/bin"
+
+        sh "${GITHUB_ACTION_PATH}/install.sh" \
+          -b "${bindir}" "${version}"
+        echo "${bindir}" >> "${GITHUB_PATH}"
+
+branding:
+  icon: file-text
+  color: blue
