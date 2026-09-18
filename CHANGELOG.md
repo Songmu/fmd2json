@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.6](https://github.com/Songmu/fmd2json/compare/v0.0.5...v0.0.6) - 2026-09-18
+
+- Add composite action for installing fmd2json by @Songmu in https://github.com/Songmu/fmd2json/pull/33
+
 ## [v0.0.5](https://github.com/Songmu/fmd2json/compare/v0.0.4...v0.0.5) - 2026-09-17
 
 - Document fmd2json skill installation by @Songmu in https://github.com/Songmu/fmd2json/pull/30
