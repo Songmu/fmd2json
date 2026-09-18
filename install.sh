@@ -43,8 +43,13 @@ parse_args() {
 # if a curl|bash cuts off the end of the script due to
 # network, either nothing will happen or will syntax error
 # out preventing half-done work
+cleanup() {
+  if [ -n "${tmpdir:-}" ]; then
+    rm -rf "${tmpdir}"
+    tmpdir=
+  fi
+}
 execute() {
-  tmpdir=$(mktemp -d)
   log_debug "downloading files into ${tmpdir}"
   http_download "${tmpdir}/${TARBALL}" "${TARBALL_URL}"
   http_download "${tmpdir}/${CHECKSUM}" "${CHECKSUM_URL}"
@@ -59,7 +64,6 @@ execute() {
     install "${srcdir}/${binexe}" "${BINDIR}/"
     log_info "installed ${BINDIR}/${binexe}"
   done
-  rm -rf "${tmpdir}"
 }
 get_binaries() {
   case "$PLATFORM" in
@@ -282,10 +286,9 @@ http_download() {
   return 1
 }
 http_copy() {
-  tmp=$(mktemp)
+  tmp="${tmpdir}/http-copy"
   http_download "${tmp}" "$1" "$2" || return 1
-  body=$(cat "$tmp")
-  rm -f "${tmp}"
+  body=$(cat "${tmp}")
   echo "$body"
 }
 github_release() {
@@ -311,8 +314,8 @@ hash_sha256() {
     hash=$(shasum -a 256 "$TARGET" 2>/dev/null) || return 1
     echo "$hash" | cut -d ' ' -f 1
   elif is_command openssl; then
-    hash=$(openssl -dst openssl dgst -sha256 "$TARGET") || return 1
-    echo "$hash" | cut -d ' ' -f a
+    hash=$(openssl dgst -sha256 "$TARGET") || return 1
+    echo "$hash" | awk '{print $NF}'
   else
     log_crit "hash_sha256 unable to find command to compute sha-256 hash"
     return 1
@@ -366,6 +369,10 @@ parse_args "$@"
 
 get_binaries
 
+tmpdir=$(mktemp -d)
+trap cleanup 0
+trap 'exit 1' HUP INT TERM
+
 tag_to_version
 
 adjust_format
@@ -384,3 +391,6 @@ CHECKSUM_URL=${GITHUB_DOWNLOAD}/${TAG}/${CHECKSUM}
 
 
 execute
+
+cleanup
+trap - 0 HUP INT TERM
