@@ -2,7 +2,7 @@
 set -euo pipefail
 
 tool="fmd2json"
-tag="v0.0.6"
+tag="v0.0.7"
 version="${tag#v}"
 
 # X86 needs conversion to ia32, but it's unsupported, so no issue.
