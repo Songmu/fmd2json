@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.0.7](https://github.com/Songmu/fmd2json/compare/v0.0.6...v0.0.7) - 2026-10-02
+
+- Use runner tool cache for GitHub Action installs by @Songmu in https://github.com/Songmu/fmd2json/pull/42
+- build(deps): bump reviewdog/action-actionlint from 1.74.0 to 1.77.0 by @dependabot[bot] in https://github.com/Songmu/fmd2json/pull/41
+- build(deps): bump github.com/Songmu/skillsmith from 0.1.0 to 0.2.0 by @dependabot[bot] in https://github.com/Songmu/fmd2json/pull/38
+- build(deps): bump Songmu/tagpr from 1.20.3 to 1.21.0 by @dependabot[bot] in https://github.com/Songmu/fmd2json/pull/40
+- build(deps): bump codecov/codecov-action from 6.0.1 to 7.1.1 by @dependabot[bot] in https://github.com/Songmu/fmd2json/pull/37
+- build(deps): bump reviewdog/action-staticcheck from 1.32.0 to 1.32.1 by @dependabot[bot] in https://github.com/Songmu/fmd2json/pull/36
+- build(deps): bump reviewdog/action-misspell from 1.29.0 to 1.30.1 by @dependabot[bot] in https://github.com/Songmu/fmd2json/pull/35
+
 ## [v0.0.6](https://github.com/Songmu/fmd2json/compare/v0.0.5...v0.0.6) - 2026-09-18
 
 - Add composite action for installing fmd2json by @Songmu in https://github.com/Songmu/fmd2json/pull/33
