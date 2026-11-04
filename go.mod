@@ -5,10 +5,10 @@ go 1.25.0
 require (
 	github.com/Songmu/skillsmith v0.2.0
 	github.com/goccy/go-yaml v1.19.2
-	github.com/itchyny/gojq v0.12.19
+	github.com/itchyny/gojq v0.12.20
 )
 
 require (
-	github.com/itchyny/timefmt-go v0.1.8 // indirect
+	github.com/itchyny/timefmt-go v0.1.9 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 )
