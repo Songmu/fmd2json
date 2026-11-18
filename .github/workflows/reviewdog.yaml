@@ -21,7 +21,7 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
-    - uses: reviewdog/action-staticcheck@b2a168b3ea66e3b3d98cc693883d2bc18bc1bffc # v1.32.1
+    - uses: reviewdog/action-staticcheck@a9d23e16f283f2cbe6affeae97d9cb3e0d037c3b # v1.34.1
       with:
         reporter: github-pr-review
         fail_on_error: true
